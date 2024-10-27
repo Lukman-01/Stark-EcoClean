@@ -25,3 +25,69 @@ pub trait IERC20<TContractState> {
 }
 
 
+#[starknet::contract]
+pub mod EcoToken {
+    use core::num::traits::Zero;
+    use starknet::get_caller_address;
+    use starknet::contract_address_const;
+    use starknet::ContractAddress;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess
+    };
+
+    #[storage]
+    struct Storage {
+        name: felt252,
+        symbol: felt252,
+        decimals: u8,
+        total_supply: felt252,
+        balances: Map::<ContractAddress, felt252>,
+        allowances: Map::<(ContractAddress, ContractAddress), felt252>,
+    }
+
+    #[event]
+    #[derive(Copy, Drop, Debug, PartialEq, starknet::Event)]
+    pub enum Event {
+        Transfer: Transfer,
+        Approval: Approval,
+    }
+    #[derive(Copy, Drop, Debug, PartialEq, starknet::Event)]
+    pub struct Transfer {
+        pub from: ContractAddress,
+        pub to: ContractAddress,
+        pub value: felt252,
+    }
+    #[derive(Copy, Drop, Debug, PartialEq, starknet::Event)]
+    pub struct Approval {
+        pub owner: ContractAddress,
+        pub spender: ContractAddress,
+        pub value: felt252,
+    }
+
+    mod Errors {
+        pub const APPROVE_FROM_ZERO: felt252 = 'ERC20: approve from 0';
+        pub const APPROVE_TO_ZERO: felt252 = 'ERC20: approve to 0';
+        pub const TRANSFER_FROM_ZERO: felt252 = 'ERC20: transfer from 0';
+        pub const TRANSFER_TO_ZERO: felt252 = 'ERC20: transfer to 0';
+        pub const BURN_FROM_ZERO: felt252 = 'ERC20: burn from 0';
+        pub const MINT_TO_ZERO: felt252 = 'ERC20: mint to 0';
+    }
+
+    #[constructor]
+    fn constructor(
+        ref self: ContractState,
+        recipient: ContractAddress,
+        name: felt252,
+        decimals: u8,
+        initial_supply: felt252,
+        symbol: felt252
+    ) {
+        self.name.write(name);
+        self.symbol.write(symbol);
+        self.decimals.write(decimals);
+        self.mint(recipient, initial_supply);
+    }
+
+    
+}
