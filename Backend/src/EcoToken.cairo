@@ -22,6 +22,8 @@ pub trait IERC20<TContractState> {
     fn decrease_allowance(
         ref self: TContractState, spender: ContractAddress, subtracted_value: felt252
     );
+    fn mint(ref self: TContractState, recipient: ContractAddress, amount: felt252);
+    fn burn(ref self: TContractState, amount: felt252);
 }
 
 
@@ -35,6 +37,7 @@ pub mod EcoToken {
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess
     };
+    
 
     #[storage]
     struct Storage {
@@ -44,6 +47,7 @@ pub mod EcoToken {
         total_supply: felt252,
         balances: Map::<ContractAddress, felt252>,
         allowances: Map::<(ContractAddress, ContractAddress), felt252>,
+        owner: ContractAddress,
     }
 
     #[event]
@@ -72,6 +76,7 @@ pub mod EcoToken {
         pub const TRANSFER_TO_ZERO: felt252 = 'ERC20: transfer to 0';
         pub const BURN_FROM_ZERO: felt252 = 'ERC20: burn from 0';
         pub const MINT_TO_ZERO: felt252 = 'ERC20: mint to 0';
+        pub const NOT_OWNER: felt252 = 'ERC20: caller is not owner';
     }
 
     #[constructor]
@@ -86,7 +91,9 @@ pub mod EcoToken {
         self.name.write(name);
         self.symbol.write(symbol);
         self.decimals.write(decimals);
-        self.mint(recipient, initial_supply);
+        // Set the contract owner to the deployer
+        self.owner.write(get_caller_address());
+        self._mint(recipient, initial_supply);
     }
 
     #[abi(embed_v0)]
@@ -120,6 +127,18 @@ pub mod EcoToken {
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: felt252) {
             let sender = get_caller_address();
             self._transfer(sender, recipient, amount);
+        }
+
+        fn mint(ref self: ContractState, recipient: ContractAddress, amount: felt252) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), Errors::NOT_OWNER);
+            self._mint(recipient, amount);
+        }
+
+        fn burn(ref self: ContractState, amount: felt252) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), Errors::NOT_OWNER);
+            self._burn(caller, amount);
         }
 
         fn transfer_from(
@@ -194,20 +213,46 @@ pub mod EcoToken {
             self.emit(Approval { owner, spender, value: amount });
         }
 
-        fn mint(ref self: ContractState, recipient: ContractAddress, amount: felt252) {
+        fn _mint(ref self: ContractState, recipient: ContractAddress, amount: felt252) {
             assert(recipient.is_non_zero(), Errors::MINT_TO_ZERO);
+            
             let supply = self.total_supply.read() + amount;
             self.total_supply.write(supply);
+            
             let balance = self.balances.read(recipient) + amount;
             self.balances.write(recipient, balance);
-            self
-                .emit(
-                    Event::Transfer(
-                        Transfer {
-                            from: contract_address_const::<0>(), to: recipient, value: amount
-                        }
-                    )
-                );
+            
+            self.emit(
+                Event::Transfer(
+                    Transfer {
+                        from: contract_address_const::<0>(),
+                        to: recipient,
+                        value: amount
+                    }
+                )
+            );
+        }
+
+        fn _burn(ref self: ContractState, account: ContractAddress, amount: felt252) {
+            assert(account.is_non_zero(), Errors::BURN_FROM_ZERO);
+            
+            let balance = self.balances.read(account);
+            //assert(balance >= amount, 'ERC20: burn amount exceeds balance');
+            
+            self.balances.write(account, balance - amount);
+            
+            let supply = self.total_supply.read() - amount;
+            self.total_supply.write(supply);
+            
+            self.emit(
+                Event::Transfer(
+                    Transfer {
+                        from: account,
+                        to: contract_address_const::<0>(),
+                        value: amount
+                    }
+                )
+            );
         }
     }
 }
