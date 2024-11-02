@@ -37,7 +37,7 @@ pub mod EcoToken {
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess
     };
-    
+
 
     #[storage]
     struct Storage {
@@ -161,7 +161,8 @@ pub mod EcoToken {
             ref self: ContractState, spender: ContractAddress, added_value: felt252
         ) {
             let caller = get_caller_address();
-            self.approve_helper(
+            self
+                .approve_helper(
                     caller, spender, self.allowances.read((caller, spender)) + added_value
                 );
         }
@@ -170,11 +171,11 @@ pub mod EcoToken {
             ref self: ContractState, spender: ContractAddress, subtracted_value: felt252
         ) {
             let caller = get_caller_address();
-            self.approve_helper(
+            self
+                .approve_helper(
                     caller, spender, self.allowances.read((caller, spender)) - subtracted_value
                 );
         }
-        
     }
 
     #[generate_trait]
@@ -215,44 +216,40 @@ pub mod EcoToken {
 
         fn _mint(ref self: ContractState, recipient: ContractAddress, amount: felt252) {
             assert(recipient.is_non_zero(), Errors::MINT_TO_ZERO);
-            
+
             let supply = self.total_supply.read() + amount;
             self.total_supply.write(supply);
-            
+
             let balance = self.balances.read(recipient) + amount;
             self.balances.write(recipient, balance);
-            
-            self.emit(
-                Event::Transfer(
-                    Transfer {
-                        from: contract_address_const::<0>(),
-                        to: recipient,
-                        value: amount
-                    }
-                )
-            );
+
+            self
+                .emit(
+                    Event::Transfer(
+                        Transfer {
+                            from: contract_address_const::<0>(), to: recipient, value: amount
+                        }
+                    )
+                );
         }
 
         fn _burn(ref self: ContractState, account: ContractAddress, amount: felt252) {
             assert(account.is_non_zero(), Errors::BURN_FROM_ZERO);
-            
+
             let balance = self.balances.read(account);
             //assert(balance >= amount, 'ERC20: burn amount exceeds balance');
-            
+
             self.balances.write(account, balance - amount);
-            
+
             let supply = self.total_supply.read() - amount;
             self.total_supply.write(supply);
-            
-            self.emit(
-                Event::Transfer(
-                    Transfer {
-                        from: account,
-                        to: contract_address_const::<0>(),
-                        value: amount
-                    }
-                )
-            );
+
+            self
+                .emit(
+                    Event::Transfer(
+                        Transfer { from: account, to: contract_address_const::<0>(), value: amount }
+                    )
+                );
         }
     }
 }
