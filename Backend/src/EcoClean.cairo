@@ -16,9 +16,16 @@ pub mod EcoClean {
 
     #[starknet::interface]
     trait IERC20<TContractState> {
-        fn transfer_from(ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+        fn transfer_from(
+            ref self: TContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256
+        ) -> bool;
         fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
-        fn allowance(self: @TContractState, owner: ContractAddress, spender: ContractAddress) -> u256;
+        fn allowance(
+            self: @TContractState, owner: ContractAddress, spender: ContractAddress
+        ) -> u256;
     }
 
     #[storage]
@@ -131,16 +138,30 @@ pub mod EcoClean {
         picker_address: ContractAddress,
         amount: u256,
     }
-    
+
 
     #[starknet::interface]
     pub trait IEcoClean<TContractState> {
         fn constructor(ref self: TContractState, eco_token_address: ContractAddress);
-        fn register_company(ref self: TContractState, name: felt252, min_weight_requirement: u256, max_price_per_kg: u256, active: bool) -> bool;
+        fn register_company(
+            ref self: TContractState,
+            name: felt252,
+            min_weight_requirement: u256,
+            max_price_per_kg: u256,
+            active: bool
+        ) -> bool;
         fn get_registered_company_count(self: @TContractState) -> u32;
-        fn edit_company(ref self: TContractState, name: felt252, min_weight_requirement: u256, max_price_per_kg: u256, active: bool) -> bool;
+        fn edit_company(
+            ref self: TContractState,
+            name: felt252,
+            min_weight_requirement: u256,
+            max_price_per_kg: u256,
+            active: bool
+        ) -> bool;
         fn update_company_name(ref self: TContractState, name: felt252);
-        fn update_company_min_weight_requirement(ref self: TContractState, min_weight_requirement: u256);
+        fn update_company_min_weight_requirement(
+            ref self: TContractState, min_weight_requirement: u256
+        );
         fn update_company_max_price_per_kg(ref self: TContractState, max_price_per_kg: u256);
         fn update_company_active_status(ref self: TContractState, active: bool);
         fn register_picker(ref self: TContractState, name: felt252, email: felt252) -> bool;
@@ -150,13 +171,17 @@ pub mod EcoClean {
         fn edit_picker(ref self: TContractState, name: felt252, email: felt252) -> bool;
         fn update_picker_name(ref self: TContractState, name: felt252);
         fn update_picker_email(ref self: TContractState, email: felt252);
-        fn deposit_plastic(ref self: TContractState, company_address: ContractAddress, weight: u256) -> u256;
+        fn deposit_plastic(
+            ref self: TContractState, company_address: ContractAddress, weight: u256
+        ) -> u256;
         fn validate_plastic(ref self: TContractState, transaction_id: u256) -> bool;
         fn pay_picker(ref self: TContractState, transaction_id: u256) -> bool;
         fn get_all_company_addresses(self: @TContractState) -> Array<ContractAddress>;
         fn get_all_companies(self: @TContractState) -> Array<Company>;
         fn get_all_picker_addresses(self: @TContractState) -> Array<ContractAddress>;
-        fn get_picker_transactions(self: @TContractState, picker_address: ContractAddress) -> Array<Transaction>;
+        fn get_picker_transactions(
+            self: @TContractState, picker_address: ContractAddress
+        ) -> Array<Transaction>;
     }
 
     // Contract implementation
@@ -213,13 +238,18 @@ pub mod EcoClean {
             self.company_addresses.write(current_len, caller);
             self.company_addresses_len.write(current_len + 1);
 
-            self.emit(Event::CompanyRegistered(CompanyRegistered {
-                company_address: caller,
-                name: name,
-                min_weight_requirement: min_weight_requirement,
-                max_price_per_kg: max_price_per_kg,
-                active: active,
-            }));
+            self
+                .emit(
+                    Event::CompanyRegistered(
+                        CompanyRegistered {
+                            company_address: caller,
+                            name: name,
+                            min_weight_requirement: min_weight_requirement,
+                            max_price_per_kg: max_price_per_kg,
+                            active: active,
+                        }
+                    )
+                );
 
             true
         }
@@ -245,13 +275,18 @@ pub mod EcoClean {
 
             self.companies.write(caller, company);
 
-            self.emit(Event::CompanyEdited(CompanyEdited {
-                company_address: caller,
-                name: name,
-                min_weight_requirement: min_weight_requirement,
-                max_price_per_kg: max_price_per_kg,
-                active: active,
-            }));
+            self
+                .emit(
+                    Event::CompanyEdited(
+                        CompanyEdited {
+                            company_address: caller,
+                            name: name,
+                            min_weight_requirement: min_weight_requirement,
+                            max_price_per_kg: max_price_per_kg,
+                            active: active,
+                        }
+                    )
+                );
 
             true
         }
@@ -265,7 +300,9 @@ pub mod EcoClean {
             self.companies.write(caller, company);
         }
 
-        fn update_company_min_weight_requirement(ref self: ContractState, min_weight_requirement: u256) {
+        fn update_company_min_weight_requirement(
+            ref self: ContractState, min_weight_requirement: u256
+        ) {
             let caller = get_caller_address();
             assert(min_weight_requirement > 0, Errors::INVALID_WEIGHT);
             let mut company = self.companies.read(caller);
@@ -300,10 +337,7 @@ pub mod EcoClean {
             assert(existing_picker.name == 0, Errors::PICKER_EXISTS);
 
             let new_picker = Picker {
-                picker_address: caller,
-                name: name,
-                email: email,
-                weight_deposited: 0,
+                picker_address: caller, name: name, email: email, weight_deposited: 0,
             };
 
             self.pickers.write(caller, new_picker);
@@ -311,11 +345,12 @@ pub mod EcoClean {
             self.picker_addresses.write(current_len, caller);
             self.picker_addresses_len.write(current_len + 1);
 
-            self.emit(Event::PickerRegistered(PickerRegistered {
-                picker_address: caller,
-                name: name,
-                email: email,
-            }));
+            self
+                .emit(
+                    Event::PickerRegistered(
+                        PickerRegistered { picker_address: caller, name: name, email: email, }
+                    )
+                );
 
             true
         }
@@ -332,11 +367,12 @@ pub mod EcoClean {
             picker.email = email;
             self.pickers.write(caller, picker);
 
-            self.emit(Event::PickerEdited(PickerEdited {
-                picker_address: caller,
-                name: name,
-                email: email,
-            }));
+            self
+                .emit(
+                    Event::PickerEdited(
+                        PickerEdited { picker_address: caller, name: name, email: email, }
+                    )
+                );
 
             true
         }
@@ -360,16 +396,14 @@ pub mod EcoClean {
         }
 
         fn deposit_plastic(
-            ref self: ContractState,
-            company_address: ContractAddress,
-            weight: u256
+            ref self: ContractState, company_address: ContractAddress, weight: u256
         ) -> u256 {
             let caller = get_caller_address();
-            
+
             // Validate picker
             let picker = self.pickers.read(caller);
             assert(picker.name != 0, Errors::PICKER_NOT_FOUND);
-            
+
             // Validate company and weight
             let company = self.companies.read(company_address);
             assert(company.active, Errors::COMPANY_NOT_ACTIVE);
@@ -377,7 +411,7 @@ pub mod EcoClean {
 
             let transaction_id = self.total_transactions.read();
             let price = weight * company.max_price_per_kg;
-            
+
             let new_transaction = Transaction {
                 id: transaction_id,
                 company_address: company_address,
@@ -389,30 +423,35 @@ pub mod EcoClean {
 
             // Store the transaction
             self.transactions.write(transaction_id, new_transaction);
-            
+
             // Update picker's transaction list
             let picker_tx_len = self.picker_transactions_len.read(caller);
             self.picker_transactions.write((caller, picker_tx_len), transaction_id);
             self.picker_transactions_len.write(caller, picker_tx_len + 1);
-            
+
             // Increment total transactions counter
             self.total_transactions.write(transaction_id + 1);
 
             // Emit event
-            self.emit(Event::PlasticDeposited(PlasticDeposited {
-                transaction_id: transaction_id,
-                company_address: company_address,
-                picker_address: caller,
-                weight: weight,
-                price: price,
-            }));
+            self
+                .emit(
+                    Event::PlasticDeposited(
+                        PlasticDeposited {
+                            transaction_id: transaction_id,
+                            company_address: company_address,
+                            picker_address: caller,
+                            weight: weight,
+                            price: price,
+                        }
+                    )
+                );
 
             transaction_id
         }
 
         fn validate_plastic(ref self: ContractState, transaction_id: u256) -> bool {
             let caller = get_caller_address();
-            
+
             // Get transaction
             let mut transaction = self.transactions.read(transaction_id);
             assert(transaction.company_address == caller, Errors::UNAUTHORIZED);
@@ -427,11 +466,16 @@ pub mod EcoClean {
             picker.weight_deposited += transaction.weight;
             self.pickers.write(transaction.picker_address, picker);
 
-            self.emit(Event::PlasticValidated(PlasticValidated {
-                transaction_id: transaction_id,
-                company_address: caller,
-                picker_address: transaction.picker_address,
-            }));
+            self
+                .emit(
+                    Event::PlasticValidated(
+                        PlasticValidated {
+                            transaction_id: transaction_id,
+                            company_address: caller,
+                            picker_address: transaction.picker_address,
+                        }
+                    )
+                );
 
             true
         }
@@ -460,17 +504,20 @@ pub mod EcoClean {
             assert(balance >= amount, Errors::INSUFFICIENT_BALANCE);
 
             // Transfer tokens
-            let transfer_success = eco_token.transfer_from(
-                company_address, picker_address, amount
-            );
+            let transfer_success = eco_token.transfer_from(company_address, picker_address, amount);
             assert(transfer_success, Errors::TRANSFER_FAILED);
 
-            self.emit(Event::PickerPaid(PickerPaid {
-                transaction_id: transaction_id,
-                company_address: company_address,
-                picker_address: picker_address,
-                amount: amount,
-            }));
+            self
+                .emit(
+                    Event::PickerPaid(
+                        PickerPaid {
+                            transaction_id: transaction_id,
+                            company_address: company_address,
+                            picker_address: picker_address,
+                            amount: amount,
+                        }
+                    )
+                );
 
             self.locked.write(false);
             true
@@ -480,7 +527,7 @@ pub mod EcoClean {
             let mut addresses = ArrayTrait::new();
             let len = self.company_addresses_len.read();
             let mut i: u32 = 0;
-            
+
             loop {
                 if i >= len {
                     break;
@@ -488,7 +535,7 @@ pub mod EcoClean {
                 addresses.append(self.company_addresses.read(i));
                 i += 1;
             };
-            
+
             addresses
         }
 
@@ -496,7 +543,7 @@ pub mod EcoClean {
             let mut companies = ArrayTrait::new();
             let len = self.company_addresses_len.read();
             let mut i: u32 = 0;
-            
+
             loop {
                 if i >= len {
                     break;
@@ -505,7 +552,7 @@ pub mod EcoClean {
                 companies.append(self.companies.read(address));
                 i += 1;
             };
-            
+
             companies
         }
 
@@ -513,7 +560,7 @@ pub mod EcoClean {
             let mut addresses = ArrayTrait::new();
             let len = self.picker_addresses_len.read();
             let mut i: u32 = 0;
-            
+
             loop {
                 if i >= len {
                     break;
@@ -521,18 +568,17 @@ pub mod EcoClean {
                 addresses.append(self.picker_addresses.read(i));
                 i += 1;
             };
-            
+
             addresses
         }
 
         fn get_picker_transactions(
-            self: @ContractState,
-            picker_address: ContractAddress
+            self: @ContractState, picker_address: ContractAddress
         ) -> Array<Transaction> {
             let mut transactions = ArrayTrait::new();
             let len = self.picker_transactions_len.read(picker_address);
             let mut i: u32 = 0;
-            
+
             loop {
                 if i >= len {
                     break;
@@ -541,7 +587,7 @@ pub mod EcoClean {
                 transactions.append(self.transactions.read(transaction_id));
                 i += 1;
             };
-            
+
             transactions
         }
     }
