@@ -1,12 +1,12 @@
-//use starknet::ContractAddress;
-
 #[starknet::contract]
 pub mod EcoClean {
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use core::array::ArrayTrait;
     //use core::option::OptionTrait;
     use core::num::traits::Zero;
-    use crate::Errors::Errors;
+    use crate::Interfaces::IEcoClean::IEcoClean;
+    use crate::Errors::CleanErrors::Errors;
+    use crate::EcoCleanStructs::{Company, Picker, Transaction};
 
     //use super::IEcoClean;
     use starknet::storage::{
@@ -42,33 +42,6 @@ pub mod EcoClean {
         picker_transactions_len: Map::<ContractAddress, u32>,
         total_transactions: u256,
         locked: bool,
-    }
-
-    #[derive(Copy, Drop, Serde, starknet::Store)]
-    struct Company {
-        company_address: ContractAddress,
-        name: felt252,
-        min_weight_requirement: u256,
-        max_price_per_kg: u256,
-        active: bool,
-    }
-
-    #[derive(Copy, Drop, Serde, starknet::Store)]
-    struct Picker {
-        picker_address: ContractAddress,
-        name: felt252,
-        email: felt252,
-        weight_deposited: u256,
-    }
-
-    #[derive(Copy, Drop, Serde, starknet::Store)]
-    struct Transaction {
-        id: u256,
-        company_address: ContractAddress,
-        picker_address: ContractAddress,
-        weight: u256,
-        price: u256,
-        is_approved: bool,
     }
 
     #[event]
@@ -137,51 +110,6 @@ pub mod EcoClean {
         company_address: ContractAddress,
         picker_address: ContractAddress,
         amount: u256,
-    }
-
-
-    #[starknet::interface]
-    pub trait IEcoClean<TContractState> {
-        fn constructor(ref self: TContractState, eco_token_address: ContractAddress);
-        fn register_company(
-            ref self: TContractState,
-            name: felt252,
-            min_weight_requirement: u256,
-            max_price_per_kg: u256,
-            active: bool
-        ) -> bool;
-        fn get_registered_company_count(self: @TContractState) -> u32;
-        fn edit_company(
-            ref self: TContractState,
-            name: felt252,
-            min_weight_requirement: u256,
-            max_price_per_kg: u256,
-            active: bool
-        ) -> bool;
-        fn update_company_name(ref self: TContractState, name: felt252);
-        fn update_company_min_weight_requirement(
-            ref self: TContractState, min_weight_requirement: u256
-        );
-        fn update_company_max_price_per_kg(ref self: TContractState, max_price_per_kg: u256);
-        fn update_company_active_status(ref self: TContractState, active: bool);
-        fn register_picker(ref self: TContractState, name: felt252, email: felt252) -> bool;
-        fn get_picker(self: @TContractState, address: ContractAddress) -> Picker;
-        fn get_company(self: @TContractState, address: ContractAddress) -> Company;
-        fn get_registered_picker_count(self: @TContractState) -> u32;
-        fn edit_picker(ref self: TContractState, name: felt252, email: felt252) -> bool;
-        fn update_picker_name(ref self: TContractState, name: felt252);
-        fn update_picker_email(ref self: TContractState, email: felt252);
-        fn deposit_plastic(
-            ref self: TContractState, company_address: ContractAddress, weight: u256
-        ) -> u256;
-        fn validate_plastic(ref self: TContractState, transaction_id: u256) -> bool;
-        fn pay_picker(ref self: TContractState, transaction_id: u256) -> bool;
-        fn get_all_company_addresses(self: @TContractState) -> Array<ContractAddress>;
-        fn get_all_companies(self: @TContractState) -> Array<Company>;
-        fn get_all_picker_addresses(self: @TContractState) -> Array<ContractAddress>;
-        fn get_picker_transactions(
-            self: @TContractState, picker_address: ContractAddress
-        ) -> Array<Transaction>;
     }
 
     // Contract implementation
@@ -421,18 +349,14 @@ pub mod EcoClean {
                 is_approved: false
             };
 
-            // Store the transaction
             self.transactions.write(transaction_id, new_transaction);
 
-            // Update picker's transaction list
             let picker_tx_len = self.picker_transactions_len.read(caller);
             self.picker_transactions.write((caller, picker_tx_len), transaction_id);
             self.picker_transactions_len.write(caller, picker_tx_len + 1);
 
-            // Increment total transactions counter
             self.total_transactions.write(transaction_id + 1);
 
-            // Emit event
             self
                 .emit(
                     Event::PlasticDeposited(
@@ -457,14 +381,18 @@ pub mod EcoClean {
             assert(transaction.company_address == caller, Errors::UNAUTHORIZED);
             assert(!transaction.is_approved, Errors::ALREADY_APPROVED);
 
+            // Store necessary values before moving transaction
+            let picker_address = transaction.picker_address;
+            let weight = transaction.weight;
+
             // Update transaction status
             transaction.is_approved = true;
             self.transactions.write(transaction_id, transaction);
 
             // Update picker's total weight deposited
-            let mut picker = self.pickers.read(transaction.picker_address);
-            picker.weight_deposited += transaction.weight;
-            self.pickers.write(transaction.picker_address, picker);
+            let mut picker = self.pickers.read(picker_address);
+            picker.weight_deposited += weight;
+            self.pickers.write(picker_address, picker);
 
             self
                 .emit(
@@ -472,7 +400,7 @@ pub mod EcoClean {
                         PlasticValidated {
                             transaction_id: transaction_id,
                             company_address: caller,
-                            picker_address: transaction.picker_address,
+                            picker_address: picker_address,
                         }
                     )
                 );

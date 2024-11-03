@@ -1,34 +1,7 @@
-use starknet::ContractAddress;
-
-#[starknet::interface]
-pub trait IERC20<TContractState> {
-    fn get_name(self: @TContractState) -> felt252;
-    fn get_symbol(self: @TContractState) -> felt252;
-    fn get_decimals(self: @TContractState) -> u8;
-    fn get_total_supply(self: @TContractState) -> felt252;
-    fn balance_of(self: @TContractState, account: ContractAddress) -> felt252;
-    fn allowance(
-        self: @TContractState, owner: ContractAddress, spender: ContractAddress
-    ) -> felt252;
-    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: felt252);
-    fn transfer_from(
-        ref self: TContractState,
-        sender: ContractAddress,
-        recipient: ContractAddress,
-        amount: felt252
-    );
-    fn approve(ref self: TContractState, spender: ContractAddress, amount: felt252);
-    fn increase_allowance(ref self: TContractState, spender: ContractAddress, added_value: felt252);
-    fn decrease_allowance(
-        ref self: TContractState, spender: ContractAddress, subtracted_value: felt252
-    );
-    fn mint(ref self: TContractState, recipient: ContractAddress, amount: felt252);
-    fn burn(ref self: TContractState, amount: felt252);
-}
-
-
 #[starknet::contract]
 pub mod EcoToken {
+    use crate::Interfaces::IEcoToken::IERC20;
+    use crate::Errors::TokenErrors::Errors;
     use core::num::traits::Zero;
     use starknet::get_caller_address;
     use starknet::contract_address_const;
@@ -69,16 +42,6 @@ pub mod EcoToken {
         pub value: felt252,
     }
 
-    mod Errors {
-        pub const APPROVE_FROM_ZERO: felt252 = 'ERC20: approve from 0';
-        pub const APPROVE_TO_ZERO: felt252 = 'ERC20: approve to 0';
-        pub const TRANSFER_FROM_ZERO: felt252 = 'ERC20: transfer from 0';
-        pub const TRANSFER_TO_ZERO: felt252 = 'ERC20: transfer to 0';
-        pub const BURN_FROM_ZERO: felt252 = 'ERC20: burn from 0';
-        pub const MINT_TO_ZERO: felt252 = 'ERC20: mint to 0';
-        pub const NOT_OWNER: felt252 = 'ERC20: caller is not owner';
-    }
-
     #[constructor]
     fn constructor(
         ref self: ContractState,
@@ -97,7 +60,7 @@ pub mod EcoToken {
     }
 
     #[abi(embed_v0)]
-    impl IEcoTokenImpl of super::IERC20<ContractState> {
+    impl IEcoTokenImpl of IERC20<ContractState> {
         fn get_name(self: @ContractState) -> felt252 {
             self.name.read()
         }
