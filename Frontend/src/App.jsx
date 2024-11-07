@@ -1,10 +1,17 @@
 import WalletBar from "./WalletBar"
+import { MainRoutes } from './routes/index';
+import { UserDashboardRoutes } from './routes/dashboard/user.jsx';
+import { CompanyDashboardRoutes } from './routes/dashboard/company.jsx';
+import { AdminDashboardRoutes } from "./routes/dashboard/admin.jsx";
 
 function App() {
   return (
     <>
       <WalletBar/>
-      <h1>Hello World</h1>
+      <MainRoutes />
+      <UserDashboardRoutes />
+      <CompanyDashboardRoutes />
+      <AdminDashboardRoutes />
     </>
   )
 }
